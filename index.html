@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<title>Fractal Decision Engine — If/Then</title>
+<style>
+    :root{
+      --bg:#0b1020;
+      --card:#121a33;
+      --muted:#9fb0ff;
+      --text:#e9eeff;
+      --border:rgba(255,255,255,.10);
+      --ok:#23d18b;
+      --warn:#f7b955;
+      --bad:#ff5c7a;
+      --accent:#7aa2ff;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, "Segoe UI", Tahoma, Arial, sans-serif;
+      background: radial-gradient(1200px 600px at 80% -10%, rgba(122,162,255,.25), transparent 60%),
+                  radial-gradient(900px 500px at 20% 0%, rgba(35,209,139,.18), transparent 60%),
+                  var(--bg);
+      color:var(--text);
+      line-height:1.5;
+    }
+    header{
+      padding:24px 16px 10px;
+      max-width:1100px;
+      margin:0 auto;
+    }
+    h1{
+      margin:0 0 6px 0;
+      font-size:22px;
+      font-weight:800;
+      letter-spacing:.2px;
+    }
+    .subtitle{
+      margin:0;
+      color:rgba(233,238,255,.75);
+      font-size:14px;
+    }
+    main{
+      max-width:1100px;
+      margin:0 auto;
+      padding:12px 16px 40px;
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:14px;
+    }
+    @media (min-width: 980px){
+      main{ grid-template-columns: 1.25fr .75fr; }
+    }
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    .card h2{
+      margin:0 0 10px 0;
+      font-size:16px;
+      font-weight:800;
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .badge{
+      font-size:12px;
+      padding:4px 8px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      color:rgba(233,238,255,.85);
+      background: rgba(255,255,255,.03);
+      white-space:nowrap;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:10px;
+    }
+    @media (min-width: 680px){
+      .grid.two{ grid-template-columns: 1fr 1fr; }
+    }
+    .field{
+      border:1px dashed rgba(255,255,255,.16);
+      border-radius:14px;
+      padding:10px 10px 8px;
+      background: rgba(18,26,51,.35);
+    }
+    .field .label{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      font-size:13px;
+      font-weight:700;
+    }
+    .hint{
+      margin-top:6px;
+      font-size:12px;
+      color:rgba(233,238,255,.65);
+    }
+    .switch{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      user-select:none;
+      cursor:pointer;
+      padding:2px 6px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.03);
+    }
+    .dot{
+      width:14px;height:14px;border-radius:50%;
+      background: rgba(255,255,255,.18);
+      border:1px solid rgba(255,255,255,.18);
+      transition: all .15s ease;
+    }
+    .switch[data-state="true"] .dot{ background: var(--ok); border-color: rgba(0,0,0,.0); }
+    .switch span{
+      font-size:12px;
+      color:rgba(233,238,255,.8);
+      min-width:34px;
+      text-align:center;
+    }
+
+    .result{
+      padding:12px;
+      border-radius:16px;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.02);
+    }
+    .result .row{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .pill{
+      padding:6px 10px;
+      border-radius:999px;
+      font-size:12px;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.03);
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      white-space:nowrap;
+    }
+    .pill .k{opacity:.75}
+    .action{
+      font-size:18px;
+      font-weight:900;
+      letter-spacing:.3px;
+    }
+    .action.ok{ color: var(--ok); }
+    .action.warn{ color: var(--warn); }
+    .action.bad{ color: var(--bad); }
+    .next{
+      margin-top:10px;
+      padding:10px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(18,26,51,.45);
+      color:rgba(233,238,255,.9);
+      font-size:13px;
+    }
+    .actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:10px;
+    }
+    button{
+      appearance:none;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.03);
+      color:var(--text);
+      border-radius:12px;
+      padding:10px 12px;
+      font-weight:800;
+      cursor:pointer;
+    }
+    button:hover{ border-color: rgba(255,255,255,.22); }
+    button.primary{
+      border-color: rgba(122,162,255,.45);
+      background: rgba(122,162,255,.12);
+    }
+    .small{
+      font-size:12px;
+      color:rgba(233,238,255,.65);
+      margin-top:10px;
+    }
+    details{
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:10px;
+      background: rgba(255,255,255,.02);
+    }
+    details summary{
+      cursor:pointer;
+      font-weight:900;
+      color:rgba(233,238,255,.92);
+    }
+    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .kv{ margin-top:10px; display:grid; gap:6px; }
+    .kv div{
+      display:flex; justify-content:space-between; gap:10px;
+      font-size:12px; color:rgba(233,238,255,.75);
+      border-bottom:1px dashed rgba(255,255,255,.10);
+      padding-bottom:6px;
+    }
+  
+
+/* ---- Tabs layout - تصميم أفقي محسّن ---- */
+.tabs{
+  display:flex; 
+  gap:6px; 
+  flex-wrap:wrap;
+  padding:6px; 
+  border:1px solid var(--border);
+  border-radius:12px; 
+  background: rgba(255,255,255,.02);
+  margin: 10px 0 14px;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.tab-btn{
+  cursor:pointer; 
+  user-select:none;
+  padding:6px 14px;
+  border-radius:8px;
+  border:1px solid var(--border);
+  color:rgba(233,238,255,.85);
+  background: rgba(255,255,255,.03);
+  font-weight:700;
+  font-size:12px;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+.tab-btn:hover{
+  background: rgba(255,255,255,.06);
+  border-color: rgba(255,255,255,.18);
+}
+.tab-btn[aria-selected="true"]{
+  background: rgba(122,162,255,.18);
+  border-color: rgba(122,162,255,.35);
+  color: var(--text);
+}
+.tab-panel{ 
+  display:none;
+  animation: fadeIn 0.3s ease;
+}
+.tab-panel.active{ 
+  display:block; 
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ---- Doc pages styling ---- */
+.doc-page{
+  padding:14px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.12);
+  background: rgba(18,26,51,.25);
+  margin-bottom:10px;
+}
+.doc-page h3{
+  margin:0 0 10px 0;
+  font-size:15px;
+  font-weight:900;
+  letter-spacing:.2px;
+}
+.doc-page p{
+  margin:8px 0;
+  font-size:13px;
+  color:rgba(233,238,255,.9);
+}
+.doc-page ul{
+  margin:6px 0;
+  padding-right:18px;
+  font-size:13px;
+  color:rgba(233,238,255,.9);
+}
+.doc-page li{
+  margin:4px 0;
+}
+.doc-page .note{
+  padding:10px;
+  border-radius:10px;
+  background: rgba(35,209,139,.08);
+  border:1px solid rgba(35,209,139,.25);
+  font-size:12px;
+  margin:10px 0;
+}
+.doc-page .warn{
+  padding:10px;
+  border-radius:10px;
+  background: rgba(247,185,85,.08);
+  border:1px solid rgba(247,185,85,.25);
+  font-size:12px;
+  margin:10px 0;
+}
+.doc-page code{
+  font-family: ui-monospace, monospace;
+  background: rgba(255,255,255,.08);
+  padding:2px 6px;
+  border-radius:4px;
+  font-size:12px;
+}
+</style>
+</head>
+<body>
+<header>
+<h1>🔮 Fractal Decision Engine — If/Then</h1>
+<p class="subtitle">شجرة القرارات التنفيذية (9 مراحل + Level‑P Scoring)، الآن مع دعم multi‑frame timing + مستندات Timing، Execution، Risk، Management، وFAQ.</p>
+</header>
+<main>
+<div style="grid-column:1/-1">
+
+<!-- Tabs Container -->
+<div role="tablist" class="tabs">
+  <button role="tab" aria-selected="true" aria-controls="tab-engine" class="tab-btn" tabindex="0">المحرك الرئيسي</button>
+  <button role="tab" aria-selected="false" aria-controls="tab-timing" class="tab-btn" tabindex="-1">Timing</button>
+  <button role="tab" aria-selected="false" aria-controls="tab-execution" class="tab-btn" tabindex="-1">Execution</button>
+  <button role="tab" aria-selected="false" aria-controls="tab-risk" class="tab-btn" tabindex="-1">Risk</button>
+  <button role="tab" aria-selected="false" aria-controls="tab-management" class="tab-btn" tabindex="-1">Management</button>
+  <button role="tab" aria-selected="false" aria-controls="tab-faq" class="tab-btn" tabindex="-1">FAQ</button>
+</div>
+
+<!-- Main Engine Panel -->
+<section id="tab-engine" class="tab-panel active" role="tabpanel">
+<main>
+<section class="card">
+<h2>سلسلة القرار <span class="badge">Decision Chain</span></h2>
+<details open="">
+<summary>Stage 0: البوابة البصرية — Visual Recognition Gate</summary>
+<div class="grid">
+<div class="field">
+<div class="label">
+<span>هل يوجد هيكل تكسيري واضح (ليغ هابط أو صاعد)؟</span>
+<div class="switch" data-key="structure_ok" data-state="false"><div class="dot"></div><span>لا</span></div>
+</div>
+</div>
+<div class="field">
+<div class="label">
+<span>هل التناظر واضح (أرجل تتشابه في الحجم والوقت)؟</span>
+<div class="switch" data-key="symmetry_ok" data-state="false"><div class="dot"></div><span>لا</span></div>
+</div>
+</div>
+<div class="field">
+<div class="label">
+<span>هل هناك إرهاق بنيوي (exhaustion) ملحوظ؟</span>
+<div class="switch" data-key="exhaustion_ok" data-state="false"><div class="dot"></div><span>لا</span></div>
+</div>
+<div class="hint">إذا كانت الإجابة "لا" لكن سيحدث قريبًا، فعّل الخيار التالي.</div>
+</div>
+<div class="field">
+<div class="label">
+<span>الإرهاق لم يحدث بعد، لكن قريب (مثلاً نحتاج ليغ رابع)؟</span>
+<div class="switch" data-key="exhaustion_not_yet" data-state="false"><div class="dot"></div><span>لا</span></div>
+</div>
+</div>
+</div>
+<p class="small">إن لم يمر Stage 0 بنجاح، النتيجة ستكون <span class="mono">CANCEL</span> أو <span class="mono">CHANGE_TF</span> أو <span class="mono">WAIT</span> حسب السبب.</p>
+</details>
+<details>
+<summary>Stage 1: نقطة الصفر — Point Zero</summary>
+<div class="grid">
+<div class="field">
+<div class="label">
+<span>هل حدد Point Zero بوضوح؟</span>
+<div class="switch" data-key="point_zero_clear" data-state="false"><div class="dot"></div><span>لا</span></div>
+</div>
+<div class="hint">أعلى شمعة في bullish reversal fractal، أدنى شمعة في bearish reversal fractal.</div>
+</div>
+</div>
+<p class="small">إن لم تكن واضحة → <span class="mono">CHANGE_TF</span>.</p>
+</details>
+<details>
+<summary>Stage 2: Quad (1–2–3–4)</summary>
+<div class="grid">
+<div class="field">
+<div class="label">
+<span>هل Quad واضح (1–2–3–4)؟</span>
+<div class="switch" data-key="quad_clear" data-state="false"><div class="dot"></div><span>لا</span></div>
+</div>
+<div class="hint">أربع شموع/رينجات تبدأ من Point Zero (متصاعدة أو متناقصة أو هوريزنتال).</div>
+</div>
+</div>
+<p class="small">إن لم يكن واضحًا → <span class="mono">CHANGE_TF</span>.</p>
+</details>
+<details>
+<summary>Stage 3: عائلة الشموع — Candle Family</summary>
+<div class="grid">
+<div class="field">
+<div class="label">
+<span>هل عائلة الشموع واضحة (bull vs bear)؟</span>
+<div class="switch" data-key="family_clear" data-state="false"><div class="dot"></div><span>لا</span></div>
+</div>
+<div class="hint">إذا كانت بعض الشموع bullish والأخرى bearish (عائلات مختلطة) → رَدّ بـ <span class="mono">CANCEL</span>.</div>
+</div>
+</div>
+<p class="small">إن لم تكن واضحة أو كانت مختلطة → <span class="mono">CANCEL</span>.</p>
+</details>
+<details>
+<summary>Stage 4: التناوب — Alternation</summary>
+<div class="grid">
+<div class="field">
+<div class="label">
+<span>هل التناوب قائم (تكبير→تصغير→تكبير→تصغير)؟</span>
+<div class="switch" data-key="alternation_ok" data-state="false"><div class="dot"></div><span>لا</span></div>
+</div>
+<div class="hint">لا يجوز مصغر على مصغر أو مكبر على مكبر.</div>
+</div>
+</div>
+<p class="small">إن لم يكن قائمًا → <span class="mono">CANCEL</span>.</p>
+</details>
+<details>
+<summary>Stage 5: Reflection (الانعكاس)</summary>
+<div class="grid">
+<div class="field">
+<div class="label">
+<span>هل يوجد Reflection واضح (قائد واحد يظهر)؟</span>
+<div class="switch" data-key="reflection_found" data-state="false"><div class="dot"></div><span>لا</span></div>
+</div>
+<div class="hint">Reflection هو الانعكاس الذي يدل على بداية تغيّر الطابع. يجب أن يكون قائد واحد فقط.</div>
+</div>
+<div class="field">
+<div class="label">
+<span>هل Reflection ملتبس (مرشحان يتنافسان)؟</span>
+<div class="switch" data-key="reflection_ambiguous" data-state="false"><div class="dot"></div><span>لا</span></div>
+</div>
+<div class="hint">إذا كان هناك أكثر من مرشح للقائد، النتيجة <span class="mono">WAIT</span>.</div>
+</div>
+</div>
+<p class="small">إن لم يكن موجودًا أصلاً → <span class="mono">CANCEL</span>. إن كان ملتبسًا → <span class="mono">WAIT</span>.</p>
+</details>
+<details>
+<summary>Stage 6: نطاق 4 المتوقّع — Expected Fourth Range</summary>
+<div class="grid">
+<div class="field">
+<div class="label">
+<span>هل نطاق (4) واضح؟</span>
+<div class="switch" data-key="fourth_range_clear" data-state="false"><div class="dot"></div><span>لا</span></div>
+</div>
+<div class="hint">هو النطاق الذي سيشكل نقطة دخولنا في الفريم الأعلى.</div>
+</div>
+</div>
+<p class="small">إن لم يكن واضحًا → <span class="mono">CHANGE_TF</span>.</p>
+</details>
+<details>
+<summary>Stage 7: Mini-Quad (على الفريم الأدنى)</summary>
+<div class="grid">
+<div class="field">
+<div class="label">
+<span>هل Mini‑Quad واضح؟</span>
+<div class="switch" data-key="mini_quad_clear" data-state="false"><div class="dot"></div><span>لا</span></div>
+</div>
+<div class="hint">تنزل إلى الفريم الأدنى (مثلاً 5m) وتبحث عن Quad صغير بداخل نطاق (4) الكبير.</div>
+</div>
+</div>
+<p class="small">إن لم يكن واضحًا → <span class="mono">CHANGE_TF</span> (انزل إلى 5m). إن بقي غامضًا → <span class="mono">CANCEL</span>.</p>
+</details>
+<details>
+<summary>Stage 8: Sweet Zone + وجود ضعف</summary>
+<div class="grid two">
+<div class="field">
+<div class="label">
+<span>هل السعر داخل Sweet Zone؟</span>
+<div class="switch" data-key="in_sweet_zone" data-state="false"><div class="dot"></div><span>لا</span></div>
+</div>
+<div class="hint">Sweet Zone: نطاق الفيبوناتشي (61.8% – 78.6%).</div>
+</div>
+<div class="field">
+<div class="label">
+<span>هل هناك ضعف داخل Sweet Zone (شموع تظهر عدم قدرة على الاستمرار)؟</span>
+<div class="switch" data-key="weakness_in_sweet_zone" data-state="false"><div class="dot"></div><span>لا</span></div>
+</div>
+<div class="hint">إذا كان السعر داخل Sweet Zone لكن بدون ضعف → <span class="mono">WAIT</span>.</div>
+</div>
+</div>
+<p class="small">إن كان خارج Sweet Zone → <span class="mono">WAIT</span>. إن كان داخلها بدون ضعف → <span class="mono">WAIT</span> أيضاً.</p>
+</details>
+<details>
+<summary>🚨 أحداث الإلغاء الفوري (Hard Cancel Events)</summary>
+<div class="grid">
+<div class="field">
+<div class="label">
+<span>هل كُسرت نقطة الصفر؟</span>
+<div class="switch" data-key="broke_point_zero" data-state="false"><div class="dot"></div><span>لا</span></div>
+</div>
+<div class="hint">السعر عاد وكسر Point Zero الأصلي بشكل حاسم → <span class="mono">CANCEL</span> فورًا.</div>
+</div>
+<div class="field">
+<div class="label">
+<span>هل فقدت وضوح Quad (الموجات لم تعد 1–2–3–4)؟</span>
+<div class="switch" data-key="lost_quad_clarity" data-state="false"><div class="dot"></div><span>لا</span></div>
+</div>
+<div class="hint">إذا تشوّش الـ Quad → <span class="mono">CANCEL</span> فورًا.</div>
+</div>
+<div class="field">
+<div class="label">
+<span>هل اختلطت عائلات الشموع (بعضها bull والآخر bear)؟</span>
+<div class="switch" data-key="family_mixed" data-state="false"><div class="dot"></div><span>لا</span></div>
+</div>
+<div class="hint">إذا أصبحت بعض الرينجات bullish والأخرى bearish → <span class="mono">CANCEL</span> فورًا.</div>
+</div>
+<div class="field">
+<div class="label">
+<span>هل Reflection لم يعد يطابق السلوك الحالي (mismatch)؟</span>
+<div class="switch" data-key="reflection_mismatch" data-state="false"><div class="dot"></div><span>لا</span></div>
+</div>
+<div class="hint">إذا تغير السلوك فجأة ولم يعد Reflection قائدًا → <span class="mono">CANCEL</span> فورًا.</div>
+</div>
+</div>
+<p class="small">أي من هذه الأحداث يؤدي فورًا إلى <span class="mono">CANCEL</span> دون النظر لبقية المراحل.</p>
+</details>
+<details>
+<summary>Stage 9: Level‑P Scoring (قوة السيناريو)</summary>
+<div class="grid">
+<div class="field">
+<div class="label">
+<span>A) وضوح النسخ قوي؟</span>
+<div class="switch" data-key="A_copy_strong" data-state="false"><div class="dot"></div><span>لا</span></div>
+</div>
+</div>
+<div class="field">
+<div class="label">
+<span>B) Reflection قوي؟</span>
+<div class="switch" data-key="B_reflection_strong" data-state="false"><div class="dot"></div><span>لا</span></div>
+</div>
+</div>
+<div class="field">
+<div class="label">
+<span>C) Sweet Zone قوية؟</span>
+<div class="switch" data-key="C_sweetzone_strong" data-state="false"><div class="dot"></div><span>لا</span></div>
+</div>
+</div>
+</div>
+<p class="small">قاعدة التنفيذ: لازم 2 من 3 "قوي" لإعطاء <span class="mono">ENTER</span>.</p>
+</details>
+</section>
+<aside class="card">
+<h2>القرار <span class="badge">Decision Output</span></h2>
+<div class="result">
+<div class="row">
+<div class="pill"><span class="k">ACTION</span> <span class="action warn" id="action">—</span></div>
+<div class="pill"><span class="k">NEXT</span> <span class="mono" id="next">—</span></div>
+<div class="pill"><span class="k">SCORE</span> <span class="mono" id="score">0/3</span></div>
+</div>
+<div class="next" id="explain">حرّك المفاتيح لعرض القرار فورًا.</div>
+<div class="actions">
+<button class="primary" id="btn-eval">تقييم الآن</button>
+<button id="btn-reset">إعادة ضبط</button>
+</div>
+<div class="kv" id="kv"></div>
+</div>
+<p class="small">التوصية الافتراضية للفريم: HTF=4H، LTF=15m، ثم 5m عند الحاجة.</p>
+</aside>
+</main>
+</section>
+
+<!-- Timing Panel -->
+<section id="tab-timing" class="tab-panel" role="tabpanel">
+<div class="doc-page">
+<h3>🕐 Timing — تحديد التوقيت الأمثل</h3>
+<p><strong>الهدف:</strong> معرفة متى ندخل بالضبط، وكيف نستخدم multi-timeframe analysis لتوقيت الدخول المثالي.</p>
+
+<div class="note">
+<strong>القاعدة الذهبية:</strong> لا تدخل قبل اكتمال جميع المراحل (0–8) + Level‑P Score ≥ 2/3.
+</div>
+
+<ul>
+<li><strong>HTF (Higher Timeframe):</strong> نستخدمه لتحديد الصورة الكبرى والهيكل العام (مثل 4H).</li>
+<li><strong>LTF (Lower Timeframe):</strong> نستخدمه للدخول الدقيق (مثل 15m أو 5m).</li>
+<li><strong>Sweet Zone Entry:</strong> ندخل فقط عندما يظهر ضعف داخل Sweet Zone على LTF.</li>
+</ul>
+
+<p><strong>خطوات التوقيت:</strong></p>
+<ol>
+<li>راقب HTF حتى يصل السعر إلى Sweet Zone.</li>
+<li>انتقل إلى LTF وابحث عن Mini-Quad + ضعف.</li>
+<li>إذا ظهر الضعف وكان Level‑P Score ≥ 2 → ادخل فورًا.</li>
+<li>إذا لم يظهر ضعف → انتظر ولا تدخل حتى لو كنت في Sweet Zone.</li>
+</ol>
+
+<div class="warn">
+<strong>تحذير:</strong> الدخول المبكر (قبل الضعف) يعرّضك لخطر أن يستمر السعر في الاتجاه القديم ويضربك.
+</div>
+
+<p><strong>أمثلة على التوقيت:</strong></p>
+<ul>
+<li>HTF يظهر هيكل كامل → انتظر حتى يصل السعر Sweet Zone على HTF → انزل لـ LTF → ابحث عن Mini-Quad → إذا ظهر ضعف → ادخل.</li>
+<li>إذا كان السعر قريب من Sweet Zone لكن لم يدخلها بعد → <code>WAIT</code>.</li>
+<li>إذا دخل Sweet Zone بدون ضعف → <code>WAIT</code>.</li>
+</ul>
+</div>
+</section>
+
+<!-- Execution Panel -->
+<section id="tab-execution" class="tab-panel" role="tabpanel">
+<div class="doc-page">
+<h3>⚡ Execution — التنفيذ الفعلي</h3>
+<p><strong>الهدف:</strong> كيف ننفذ الدخول بشكل عملي بعد أن قررنا <code>ENTER</code>.</p>
+
+<div class="note">
+<strong>القاعدة:</strong> الدخول يكون على Mini-Quad في LTF، وليس على HTF مباشرة.
+</div>
+
+<p><strong>خطوات التنفيذ:</strong></p>
+<ol>
+<li><strong>تحديد نقطة الدخول:</strong> انتظر حتى يكتمل Mini-Quad (1–2–3–4) على LTF.</li>
+<li><strong>Entry Trigger:</strong> ادخل عند بداية الشمعة التي تؤكد الضعف (مثلاً شمعة رفض قوي أو pin bar).</li>
+<li><strong>Stop Loss:</strong> ضعه أسفل/أعلى Mini-Quad (حسب الاتجاه) بمسافة أمان صغيرة (~5-10 pips).</li>
+<li><strong>Take Profit:</strong> الهدف الأول عند نطاق (4) على HTF، الهدف الثاني عند Point Zero على HTF.</li>
+</ol>
+
+<div class="warn">
+<strong>تحذير:</strong> لا تحرك الـ Stop Loss إلى Breakeven قبل أن يصل السعر إلى 50% من الهدف الأول، وإلا قد تخرج من صفقات رابحة مبكرًا.
+</div>
+
+<p><strong>أمثلة على التنفيذ:</strong></p>
+<ul>
+<li><strong>Bullish Setup:</strong> Mini-Quad يشكّل قاع → شمعة رفض صاعدة → ادخل Buy → SL أسفل القاع → TP1 عند نطاق (4) HTF.</li>
+<li><strong>Bearish Setup:</strong> Mini-Quad يشكّل قمة → شمعة رفض هابطة → ادخل Sell → SL أعلى القمة → TP1 عند نطاق (4) HTF.</li>
+</ul>
+
+<p><strong>حجم الصفقة (Position Sizing):</strong></p>
+<ul>
+<li>استخدم قاعدة 1-2% من رأس المال كحد أقصى للخسارة في كل صفقة.</li>
+<li>احسب حجم اللوت بناءً على المسافة بين Entry و Stop Loss.</li>
+</ul>
+</div>
+</section>
+
+<!-- Risk Panel -->
+<section id="tab-risk" class="tab-panel" role="tabpanel">
+<div class="doc-page">
+<h3>🛡️ Risk — إدارة المخاطر</h3>
+<p><strong>الهدف:</strong> حماية رأس المال وتقليل الخسائر وزيادة احتمالية البقاء في السوق على المدى الطويل.</p>
+
+<div class="note">
+<strong>القاعدة الذهبية:</strong> لا تخاطر بأكثر من 1-2% من رأس المال في أي صفقة واحدة.
+</div>
+
+<p><strong>استراتيجيات المخاطر:</strong></p>
+<ul>
+<li><strong>Stop Loss الثابت:</strong> ضعه دائمًا عند مستوى منطقي (أسفل/أعلى Mini-Quad).</li>
+<li><strong>Risk/Reward Ratio:</strong> اهدف لنسبة 1:2 كحد أدنى (إذا كنت تخاطر بـ 20 نقطة، اهدف لـ 40 نقطة ربح).</li>
+<li><strong>تجنب الـ Over-leverage:</strong> لا تستخدم رافعة مالية عالية جدًا (مثل 1:500) لأنها تزيد المخاطر.</li>
+<li><strong>Diversification:</strong> لا تضع كل رأس المال في زوج واحد أو صفقة واحدة.</li>
+</ul>
+
+<div class="warn">
+<strong>تحذير:</strong> إذا خسرت 3 صفقات متتالية، توقف لمدة يوم كامل وراجع استراتيجيتك. قد تكون هناك مشكلة في التحليل أو التنفيذ.
+</div>
+
+<p><strong>Hard Cancel Events → خروج فوري:</strong></p>
+<ul>
+<li>إذا كُسر Point Zero → اخرج فورًا (حتى لو لم يضرب SL).</li>
+<li>إذا فقد Quad وضوحه → اخرج فورًا.</li>
+<li>إذا اختلطت عائلات الشموع → اخرج فورًا.</li>
+<li>إذا Reflection لم يعد يطابق السلوك → اخرج فورًا.</li>
+</ul>
+
+<p><strong>Trailing Stop:</strong></p>
+<ul>
+<li>بعد أن يصل السعر إلى 50% من الهدف الأول، يمكنك نقل SL إلى Breakeven.</li>
+<li>بعد أن يصل السعر إلى الهدف الأول، يمكنك استخدام Trailing Stop لقفل الأرباح.</li>
+</ul>
+</div>
+</section>
+
+<!-- Management Panel -->
+<section id="tab-management" class="tab-panel" role="tabpanel">
+<div class="doc-page">
+<h3>📊 Management — إدارة الصفقات</h3>
+<p><strong>الهدف:</strong> كيفية إدارة الصفقة بعد الدخول لتعظيم الأرباح وتقليل الخسائر.</p>
+
+<div class="note">
+<strong>القاعدة:</strong> لا تترك الصفقة بدون مراقبة. راقب دائمًا HTF و LTF لرصد أي تغييرات.
+</div>
+
+<p><strong>خطوات الإدارة:</strong></p>
+<ol>
+<li><strong>بعد الدخول:</strong> راقب السعر على LTF للتأكد من أن الضعف مستمر.</li>
+<li><strong>عند الوصول إلى 50% من TP1:</strong> انقل SL إلى Breakeven لحماية رأس المال.</li>
+<li><strong>عند الوصول إلى TP1:</strong> اخرج بـ 50% من الصفقة واترك الـ 50% الباقية تجري نحو TP2.</li>
+<li><strong>عند الوصول إلى TP2:</strong> اخرج بـ 100% من الصفقة.</li>
+</ol>
+
+<div class="warn">
+<strong>تحذير:</strong> لا تطمع. إذا وصل السعر إلى TP1 ولم ترغب في الخروج، على الأقل اخرج بجزء من الصفقة لقفل الأرباح.
+</div>
+
+<p><strong>Scaling Out (الخروج التدريجي):</strong></p>
+<ul>
+<li>خروج 50% عند TP1 → يقفل ربح مضمون.</li>
+<li>خروج 50% عند TP2 → يعظّم الأرباح إذا استمر السعر.</li>
+</ul>
+
+<p><strong>Re-entry (الدخول مرة أخرى):</strong></p>
+<ul>
+<li>إذا خرجت من الصفقة عند TP1 ثم رأيت فرصة جديدة (Mini-Quad جديد + ضعف جديد)، يمكنك الدخول مرة أخرى.</li>
+<li>لكن لا تدخل مرة أخرى إذا كان Level‑P Score أقل من 2/3.</li>
+</ul>
+
+<p><strong>مراقبة Hard Cancel Events:</strong></p>
+<ul>
+<li>طوال فترة الصفقة، راقب الـ 4 أحداث الملغية (كسر Point Zero، فقدان Quad، اختلاط العائلات، Reflection Mismatch).</li>
+<li>إذا حدث أي منها → اخرج فورًا بغض النظر عن الربح/الخسارة.</li>
+</ul>
+</div>
+</section>
+
+<!-- FAQ Panel -->
+<section id="tab-faq" class="tab-panel" role="tabpanel">
+<div class="doc-page">
+<h3>❓ FAQ — الأسئلة الشائعة</h3>
+
+<p><strong>س1: هل يمكن الدخول بدون Mini-Quad؟</strong></p>
+<p>ج: لا. Mini-Quad ضروري لأنه يعطيك نقطة دخول دقيقة و SL منطقي. بدونه، أنت تخمّن.</p>
+
+<p><strong>س2: ماذا لو كان Level‑P Score = 1/3؟</strong></p>
+<p>ج: النتيجة ستكون <code>SKIP</code>. لا تدخل حتى لو كانت جميع المراحل مكتملة. القوة غير كافية.</p>
+
+<p><strong>س3: هل يمكن استخدام HTF فقط بدون LTF؟</strong></p>
+<p>ج: نظريًا نعم، لكن عمليًا ستفقد دقة التوقيت وستضطر لاستخدام SL أوسع، مما يزيد المخاطر.</p>
+
+<p><strong>س4: ماذا لو ظهر Mini-Quad لكن لا يوجد ضعف؟</strong></p>
+<p>ج: <code>WAIT</code>. لا تدخل حتى يظهر الضعف. الضعف هو التأكيد النهائي.</p>
+
+<p><strong>س5: كيف أعرف أن Reflection قوي؟</strong></p>
+<p>ج: إذا كان القائد واحد فقط (بدون منافس) ويظهر بوضوح على HTF و LTF، فهو قوي.</p>
+
+<p><strong>س6: ماذا لو كسر السعر Point Zero بعد الدخول؟</strong></p>
+<p>ج: اخرج فورًا (<code>CANCEL</code>). حتى لو كنت في ربح، اخرج لأن الهيكل انهار.</p>
+
+<p><strong>س7: هل يمكن استخدام هذا النظام على جميع الأزواج؟</strong></p>
+<p>ج: نعم، لكن يفضّل الأزواج ذات السيولة العالية (مثل EUR/USD، GBP/USD) لأنها أوضح وأقل ضوضاء.</p>
+
+<p><strong>س8: كم صفقة في اليوم؟</strong></p>
+<p>ج: ليس هناك رقم ثابت. قد تجد 0 صفقة في يوم، وقد تجد 3-5 صفقات في يوم آخر. الأهم هو الجودة، ليس الكمية.</p>
+
+<p><strong>س9: ماذا لو فشلت 3 صفقات متتالية؟</strong></p>
+<p>ج: توقف لمدة يوم كامل. راجع تحليلاتك، تأكد من أنك تتبع القواعد، واطلب مراجعة من زميل أو معلّم.</p>
+
+<p><strong>س10: هل يمكن استخدام هذا النظام على الأسهم أو الكريبتو؟</strong></p>
+<p>ج: نعم، المبدأ نفسه. لكن تذكر أن الكريبتو أكثر تقلبًا، فقد تحتاج لتعديل نسب المخاطر.</p>
+
+<div class="note">
+<strong>ملاحظة:</strong> إذا كان لديك سؤال آخر غير مدرج هنا، يمكنك تدوينه في ملاحظاتك الخاصة أو مشاركته مع الفريق.
+</div>
+</div>
+</section>
+
+</div>
+</main>
+<script>
+    const defaults = {
+      structure_ok:false, symmetry_ok:false, exhaustion_ok:false, exhaustion_not_yet:false,
+      point_zero_clear:false, quad_clear:false, family_clear:false, alternation_ok:false,
+      reflection_found:false, reflection_ambiguous:false, fourth_range_clear:false, mini_quad_clear:false,
+      in_sweet_zone:false, weakness_in_sweet_zone:false,
+      broke_point_zero:false, lost_quad_clarity:false, family_mixed:false, reflection_mismatch:false,
+      A_copy_strong:false, B_reflection_strong:false, C_sweetzone_strong:false,
+    };
+
+    let state = {...defaults};
+
+    function setSwitch(el, value){
+      el.dataset.state = String(value);
+      const txt = el.querySelector("span");
+      txt.textContent = value ? "نعم" : "لا";
+      const key = el.dataset.key;
+      state[key] = value;
+    }
+
+    function toggleSwitch(el){
+      const cur = el.dataset.state === "true";
+      setSwitch(el, !cur);
+      evaluate();
+    }
+
+    function actionStyle(action){
+      if(action === "ENTER" || action === "PROCEED") return "ok";
+      if(action === "WAIT" || action === "CHANGE_TF") return "warn";
+      return "bad";
+    }
+
+    function evaluate(){
+      // score
+      let score = 0;
+      if(state.A_copy_strong) score++;
+      if(state.B_reflection_strong) score++;
+      if(state.C_sweetzone_strong) score++;
+
+      // Hard cancel first
+      if(state.broke_point_zero){
+        return render("CANCEL", "Scenario invalid: Point Zero broken", score, "إلغاء فوري: تم كسر نقطة الصفر.");
+      }
+      if(state.lost_quad_clarity){
+        return render("CANCEL", "Scenario invalid: Quad clarity lost", score, "إلغاء فوري: فقدت وضوح Quad.");
+      }
+      if(state.alternation_ok === false && state.point_zero_clear && state.quad_clear && state.family_clear){
+        // Only meaningful after you are actually in analysis; still cancel.
+        return render("CANCEL", "Scenario invalid: Alternation broken", score, "إلغاء فوري: التناوب مكسور (مصغر على مصغر أو مكبر على مكبر).");
+      }
+      if(state.family_mixed){
+        return render("CANCEL", "Scenario invalid: Candle families mixed", score, "إلغاء فوري: اختلاط عائلات الشموع.");
+      }
+      if(state.reflection_mismatch){
+        return render("CANCEL", "Scenario invalid: Reflection mismatch", score, "إلغاء فوري: Reflection لم يعد يطابق السلوك.");
+      }
+
+      // Stage 0 Visual Gate
+      if(!state.structure_ok){
+        return render("CANCEL", "Not a fractal: No structure", score, "بوابة التعرّف فشلت: لا يوجد هيكل واضح.");
+      }
+      if(!state.symmetry_ok){
+        return render("CHANGE_TF", "Try different timeframe; if still unclear -> CANCEL", score, "التناظر غير واضح: غيّر الفريم، وإذا بقي غامضًا ألغِ.");
+      }
+      if(!state.exhaustion_ok && state.exhaustion_not_yet){
+        return render("WAIT", "Wait for structural exhaustion", score, "الإرهاق غير مكتمل: انتظر حتى يظهر الإرهاق البنيوي.");
+      }
+      if(!state.exhaustion_ok && !state.exhaustion_not_yet){
+        return render("CANCEL", "Not ready/Not present: No exhaustion", score, "لا إرهاق بنيوي: السيناريو غير صالح/غير جاهز.");
+      }
+
+      // Stage 1 Point Zero
+      if(!state.point_zero_clear){
+        return render("CHANGE_TF", "Change TF to clarify Point Zero; if still unclear -> CANCEL", score, "نقطة الصفر غير واضحة: غيّر الفريم للتوضيح.");
+      }
+
+      // Stage 2 Quad
+      if(!state.quad_clear){
+        return render("CHANGE_TF", "Change TF to clarify Quad; if still unclear -> CANCEL", score, "Quad غير واضح: غيّر الفريم لتوضيح 1–2–3–4.");
+      }
+
+      // Stage 3 Family
+      if(!state.family_clear){
+        return render("CANCEL", "Cancel: Candle family unclear/mixed", score, "عائلة الشموع غير واضحة: لا تنفيذ.");
+      }
+
+      // Stage 4 Alternation
+      if(!state.alternation_ok){
+        return render("CANCEL", "Cancel: Alternation broken", score, "التناوب غير متحقق: لا تنفيذ.");
+      }
+
+      // Stage 5 Reflection
+      if(!state.reflection_found){
+        return render("CANCEL", "Cancel: No Reflection", score, "لا يوجد Reflection واضح: لا خريطة → إلغاء.");
+      }
+      if(state.reflection_ambiguous){
+        return render("WAIT", "Wait until Reflection becomes clear", score, "Reflection ملتبس: انتظر حتى يصبح قائد واحد واضح.");
+      }
+
+      // Stage 6 Fourth range
+      if(!state.fourth_range_clear){
+        return render("CHANGE_TF", "Change TF to clarify expected 4th range; if still unclear -> CANCEL", score, "نطاق (4) غير واضح: غيّر الفريم للتوضيح.");
+      }
+
+      // Stage 7 Mini-Quad
+      if(!state.mini_quad_clear){
+        return render("CHANGE_TF", "Drop to 5m; if still unclear -> CANCEL", score, "Mini‑Quad غير واضح: انزل إلى 5m، وإن بقي غامضًا ألغِ.");
+      }
+
+      // Stage 8 Sweet Zone
+      if(!state.in_sweet_zone){
+        return render("WAIT", "Wait until price enters Sweet Zone", score, "خارج Sweet Zone: انتظر حتى يدخل السعر المنطقة.");
+      }
+      if(state.in_sweet_zone && !state.weakness_in_sweet_zone){
+        return render("WAIT", "In Sweet Zone but no weakness: wait, do not enter", score, "داخل Sweet Zone لكن بدون ضعف: انتظر ولا تدخل.");
+      }
+
+      // Stage 9 Level-P scoring
+      if(score >= 2){
+        return render("ENTER", "Execute trade", score, "شروط الدخول مكتملة + قوة السيناريو ≥ 2/3 → دخول.");
+      }
+      return render("SKIP", "Skip: Not strong enough", score, "شروط الدخول موجودة لكن القوة < 2/3 → تجاهل.");
+    }
+
+    function render(action, next, score, explain){
+      const actionEl = document.getElementById("action");
+      const nextEl = document.getElementById("next");
+      const scoreEl = document.getElementById("score");
+      const explainEl = document.getElementById("explain");
+
+      actionEl.textContent = action;
+      actionEl.className = "action " + actionStyle(action);
+      nextEl.textContent = next;
+      scoreEl.textContent = score + "/3";
+      explainEl.textContent = explain;
+
+      // show key/value snapshot
+      const kv = document.getElementById("kv");
+      kv.innerHTML = "";
+      const keysToShow = [
+        "structure_ok","symmetry_ok","exhaustion_ok","exhaustion_not_yet",
+        "point_zero_clear","quad_clear","family_clear","alternation_ok",
+        "reflection_found","reflection_ambiguous","fourth_range_clear","mini_quad_clear",
+        "in_sweet_zone","weakness_in_sweet_zone",
+        "broke_point_zero","lost_quad_clarity","family_mixed","reflection_mismatch",
+        "A_copy_strong","B_reflection_strong","C_sweetzone_strong"
+      ];
+      for(const k of keysToShow){
+        const row = document.createElement("div");
+        row.innerHTML = `<span class="mono">${k}</span><span>${state[k] ? "true" : "false"}</span>`;
+        kv.appendChild(row);
+      }
+    }
+
+    function resetAll(){
+      state = {...defaults};
+      document.querySelectorAll(".switch").forEach(sw => setSwitch(sw, false));
+      evaluate();
+    }
+
+    document.querySelectorAll(".switch").forEach(sw=>{
+      sw.addEventListener("click", ()=>toggleSwitch(sw));
+    });
+
+    document.getElementById("btn-eval").addEventListener("click", evaluate);
+    document.getElementById("btn-reset").addEventListener("click", resetAll);
+
+    // init
+    resetAll();
+  
+
+(function(){
+  const tabButtons = Array.from(document.querySelectorAll('.tab-btn'));
+  const panels = Array.from(document.querySelectorAll('.tab-panel'));
+  if(!tabButtons.length || !panels.length) return;
+
+  function activateTab(btn){
+    const targetId = btn.getAttribute('aria-controls');
+    tabButtons.forEach(b=>{
+      const sel = b===btn;
+      b.setAttribute('aria-selected', sel ? 'true':'false');
+      b.tabIndex = sel ? 0 : -1;
+    });
+    panels.forEach(p=>p.classList.toggle('active', p.id===targetId));
+  }
+
+  tabButtons.forEach(btn=>{
+    btn.addEventListener('click', ()=>activateTab(btn));
+    btn.addEventListener('keydown', (e)=>{
+      const i = tabButtons.indexOf(btn);
+      if(e.key==='ArrowLeft' || e.key==='ArrowUp'){
+        e.preventDefault();
+        const n = tabButtons[(i-1+tabButtons.length)%tabButtons.length];
+        n.focus();
+        activateTab(n);
+      }
+      if(e.key==='ArrowRight' || e.key==='ArrowDown'){
+        e.preventDefault();
+        const n = tabButtons[(i+1)%tabButtons.length];
+        n.focus();
+        activateTab(n);
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>
